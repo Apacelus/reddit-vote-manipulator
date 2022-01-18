@@ -8,7 +8,7 @@ from tkinter import W
 import subprocess
 
 option = webdriver.ChromeOptions()
-option.binary_location = r"C:\Program Files\BraveSoftware\Brave-Browser-Beta\Application\brave.exe"
+option.binary_location = "path to binary"
 option.add_argument("--incognito --headless")
 
 
