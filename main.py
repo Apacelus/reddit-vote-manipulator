@@ -5,11 +5,17 @@ from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 import tkinter as tk
 from tkinter import W
-import subprocess
+
+# import subprocess
+from selenium.webdriver import Keys
+from selenium.webdriver.common.by import By
 
 option = webdriver.ChromeOptions()
-option.binary_location = "path to binary"
+option.binary_location = r"C:\Program Files\BraveSoftware\Brave-Browser-Beta\Application\brave.exe"
 option.add_argument("--incognito --headless")
+accounts_file = ""
+available_accounts = 0
+comment_link = ""
 
 
 def launch():
@@ -48,7 +54,6 @@ def launch():
         with open("accounts.txt", 'r') as f:
             accounts_file = f.read()
             if accounts_file == "":
-                print("accounts.txt not found or corrupted, launching setup")
                 setup("accounts")
             else:
                 accounts_file = accounts_file[127:]
@@ -73,8 +78,8 @@ def setup(mode):
     window = tk.Tk()
     window.resizable(False, False)
     window.title("Opinion changer setup")
-    # window.configure(bg="#ffffff")
     window.geometry("440x600")
+    tk.Button(text="Relaunch program", command=lambda: launch(), height=1, width=25).place(x=250, y=500, anchor=W)
     match mode:
         case "driver":
             tk.Label(window, text="Driver download", font="bold 11").place(x=0, y=12, anchor=W)
@@ -96,7 +101,6 @@ def setup(mode):
                       command=lambda: print("open location in explorer, should be the same as the python exe"),
                       height=1, width=25).place(x=0, y=183, anchor=W)
             # os.path.abspath(os.getcwd())
-            window.mainloop()
             # add linux option
             # automate process with chromedriver-py
         case "accounts":
@@ -104,27 +108,46 @@ def setup(mode):
                 f.write(r"# This is the list containing the accounts that will be used for reacting to a post. "
                         + "Add new accounts like this:"
                         + "\nname:password")
-            tk.Label(window, text='- Press "Edit accounts" to manually add accounts').place(x=0, y=137, anchor=W)
-            tk.Label(window, text='- Press "Auto-download" to download 20 accounts from my repository').place(x=0,
-                                                                                                              y=137,
-                                                                                                              anchor=W)
+            tk.Label(window, text="Accounts management", font="bold 11").place(x=0, y=220, anchor=W)
+            tk.Label(window, text='•Press "Edit accounts" to manually add accounts').place(x=0, y=240, anchor=W)
+            tk.Label(window, text='•Press "Auto-download" to download accounts from the github repository.') \
+                .place(x=0, y=260, anchor=W)
             tk.Button(text="Edit accounts", command=lambda: startfile("accounts.txt"), height=1, width=25).place(
-                x=240, y=285, anchor=W)
+                x=240, y=290, anchor=W)
             tk.Button(text="Auto-download", command=lambda: startfile("accounts.txt"), height=1, width=25).place(
-                x=240, y=285, anchor=W)
-            window.mainloop()
-            # startfile("accounts.txt")
+                x=0, y=290, anchor=W)
         case "config":
             print("config.txt not found or corrupted, launching setup")
-            # open a seperate window(overlaying main window) for config
-            # options for
-            # browser select(chromium edge greyed out for now)
-            # redownloading chromedriver
-    tk.Button(text="Relaunch program", command=lambda: launch(), height=1, width=25).place(x=250, y=298, anchor=W)
+            ignore_path = False
+            # Window logic
+            # MSEdge and Firefox not yet supported
+            browser_name = ["Chrome", "Microsoft Edge", "Firefox", "Opera", "Brave", "Chromium", "Custom:"]
+            selected_browser = tk.StringVar(window)
+            selected_browser.set(browser_name[0])
+            # UI elements
+            tk.Label(window, text="More Options", font="bold 11").place(x=0, y=320, anchor=W)
+            tk.Label(window, text="Browser:").place(x=0, y=350, anchor=W)
+
+            def selection_event(event):
+                if selected_browser.get() == "Custom:":
+                    print("Custom path selected")
+                    custom_path_textbox.place(x=0, y=376, anchor=W)
+                else:
+                    custom_path_textbox.place(x=-1000, y=-1000, anchor=W)
+                    print("Custom path unselected")
+
+            tk.OptionMenu(window, selected_browser, *browser_name, command=selection_event).place(x=60, y=350, anchor=W)
+            custom_path_textbox = tk.Text(window, height=1, width=72, font="none 7")
+            tk.Checkbutton(window, text='Ignore browser path', variable=ignore_path).place(x=0, y=400, anchor=W)
+            write_config(custom_path_textbox.get(), selected_browser.get(), ignore_path)
+        case "all":
+            print("displaying whole config window")
+    window.mainloop()
 
 
 def gui():
     print("gui")
+    comment_link = ""
     # prompt for link and store in comment_link
     # store amount of votes in vote_count
     # two buttons/slider for downvote/upvote, up = true, down = false
@@ -133,29 +156,60 @@ def gui():
     # or vote=False in separate thread downvote(vote_count)
 
 
+def write_config(browser_path, browser_name, ignore_path):
+    print("writing config")
+    match browser_name:
+        case "Chrome":
+            browser_path = ""
+        case "Microsoft Edge":
+            browser_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+        case "Firefox":
+
+        case "Opera":
+
+        case "Brave":
+            browser_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+        case "Chromium":
+
+        case "Custom:":
+
+    if not ignore_path:
+        with open("config.txt", 'w') as f:
+            f.write("ignore_browser_path=False\n" + browser_path)
+    else:
+        with open("config.txt", 'w') as f:
+            f.write("ignore_browser_path=True\n" + browser_path)
+
+
 def upvote(vote_count):
     print("upvote")
+    used_accounts_count = 0
     # start loop with vote_count amount
     while (used_accounts_count < vote_count):
         print("while in upvote")
+        # extract username and password
+        username = accounts_file[used_accounts_count][:accounts_file[used_accounts_count].find(r':') - 1]
+        password = accounts_file[used_accounts_count][accounts_file[used_accounts_count].find(r':') + 1:]
         # open new incognito and login
-        # navigate to comment_link
-        # press upvote
-        # close window
+        browser.get("https://www.reddit.com/login/")
+        browser.find_element(By.ID, "loginUsername").send_keys(username)
+        browser.find_element(By.ID, "loginPassword").send_keys(password).send_keys(Keys.RETURN)
+        browser.get(comment_link)
+        browser.find_element(By.XPATH,
+                             r"/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]")
+        browser.quit()
+        used_accounts_count += 1
 
 
 def downvote(vote_count):
     print("downvote")
+    used_accounts_count = 0
     # start loop with vote_count
     while (used_accounts_count < vote_count):
         print("while in downvote")
-        # open new incognito and login
-        # navigate to comment_link
-        # press downvote
-        # close winow
 
 
-setup("driver")
+setup("config")
 try:
     browser = webdriver.Chrome(options=option)
 except WebDriverException:
