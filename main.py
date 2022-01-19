@@ -7,6 +7,8 @@ from tkinter import W
 import platform
 import urllib.request
 import tempfile
+from tkinter.messagebox import showinfo, showerror
+
 import oc_windows
 import oc_linux
 
@@ -69,9 +71,13 @@ def initialize():
             else:
                 accounts_file = accounts_file[127:]
                 accounts_file = accounts_file.split("\n"[-1])
-                available_accounts = len(accounts_file)
-                # if user leaves empty space at the end its counted too, add check later
-                print("available accounts: " + str(available_accounts))
+                empty_lines = True
+                while empty_lines:
+                    if accounts_file[len(accounts_file) - 1].find(":") == -1:
+                        del accounts_file[len(accounts_file) - 1]
+                    else:
+                        empty_lines = False
+                print("available accounts: " + str(len(accounts_file)))
     except FileNotFoundError:
         setup("accounts")
     # check if chromedriver/msedgedriver is present
@@ -81,15 +87,15 @@ def initialize():
     elif platform.system() == "Linux":
         if oc_linux.initialize() == "Missing":
             setup("driver")
-    gui()
+    gui(len(accounts_file))
 
 
 def setup(mode):
     print("setup")
-    window = tk.Tk()
-    window.resizable(False, False)
-    window.title("Opinion changer setup")
-    window.geometry("440x600")
+    setup_window = tk.Tk()
+    setup_window.resizable(False, False)
+    setup_window.title("Opinion changer setup")
+    setup_window.geometry("440x600")
     tk.Button(text="Relaunch program", command=lambda: terminate_all(), height=1, width=25).place(x=250, y=500,
                                                                                                   anchor=W)
     match mode:
@@ -116,25 +122,25 @@ def setup(mode):
                 file.extractall(path=os.getcwd())
             elif platform.system() == "Linux":
                 print("on linux")
-                tk.Label(window, text="Driver download", font="bold 11").place(x=0, y=12, anchor=W)
-                tk.Label(window, text="1. Get your browser version").place(x=0, y=33, anchor=W)
+                tk.Label(setup_window, text="Driver download", font="bold 11").place(x=0, y=12, anchor=W)
+                tk.Label(setup_window, text="1. Get your browser version").place(x=0, y=33, anchor=W)
                 tk.Button(text="Check browser version",
                           command=lambda: webbrowser.open(r"https://www.whatsmybrowser.org/"), height=1,
                           width=25).place(
                     x=0, y=58, anchor=W)
-                tk.Label(window,
+                tk.Label(setup_window,
                          text='2. Select your browser version, then download "chromedriver_win32.zip"').place(x=0, y=93,
                                                                                                               anchor=W)
                 tk.Button(text="Download driver",
                           command=lambda: webbrowser.open(r"https://chromedriver.chromium.org/downloads/"), height=1,
                           width=25).place(
                     x=0, y=121, anchor=W)
-                tk.Label(window,
+                tk.Label(setup_window,
                          text='3. Extract the file and paste it to this location').place(x=0, y=155, anchor=W)
                 tk.Button(text="Open location",
                           command=lambda: print("open location in explorer, should be the same as the python exe"),
                           height=1, width=25).place(x=0, y=183, anchor=W)
-                window.mainloop()
+                setup_window.mainloop()
                 # os.path.abspath(os.getcwd())
                 # automate process with chromedriver-py
             else:
@@ -146,15 +152,15 @@ def setup(mode):
                 f.write(r"# This is the list containing the accounts that will be used for reacting to a post. "
                         + "Add new accounts like this:"
                         + "\nname:password")
-            tk.Label(window, text="Accounts management", font="bold 11").place(x=0, y=220, anchor=W)
-            tk.Label(window, text='•Press "Edit accounts" to manually add accounts').place(x=0, y=240, anchor=W)
-            tk.Label(window, text='•Press "Auto-download" to download accounts from the github repository.') \
+            tk.Label(setup_window, text="Accounts management", font="bold 11").place(x=0, y=220, anchor=W)
+            tk.Label(setup_window, text='•Press "Edit accounts" to manually add accounts').place(x=0, y=240, anchor=W)
+            tk.Label(setup_window, text='•Press "Auto-download" to download accounts from the github repository.') \
                 .place(x=0, y=260, anchor=W)
             tk.Button(text="Edit accounts", command=lambda: startfile("accounts.txt"), height=1, width=25).place(
                 x=240, y=290, anchor=W)
             tk.Button(text="Auto-download", command=lambda: startfile("accounts.txt"), height=1, width=25).place(
                 x=0, y=290, anchor=W)
-            window.mainloop()
+            setup_window.mainloop()
         case "config":
             print("config.txt not found or corrupted, launching setup")
             ignore_path = False
@@ -166,11 +172,11 @@ def setup(mode):
                 # UI logic
                 # Firefox not yet supported
                 browser_name = ["Chrome", "Microsoft Edge", "Firefox", "Opera", "Brave", "Chromium", "Custom:"]
-                selected_browser = tk.StringVar(window)
+                selected_browser = tk.StringVar(setup_window)
                 selected_browser.set(browser_name[0])
                 # UI elements
-                tk.Label(window, text="More Options", font="bold 11").place(x=0, y=320, anchor=W)
-                tk.Label(window, text="Browser:").place(x=0, y=350, anchor=W)
+                tk.Label(setup_window, text="More Options", font="bold 11").place(x=0, y=320, anchor=W)
+                tk.Label(setup_window, text="Browser:").place(x=0, y=350, anchor=W)
 
                 def selection_event(event):
                     if selected_browser.get() == "Custom:":
@@ -180,39 +186,78 @@ def setup(mode):
                         custom_path_textbox.place(x=-1000, y=-1000, anchor=W)
                         print("Custom path unselected")
 
-                tk.OptionMenu(window, selected_browser, *browser_name, command=selection_event).place(x=60, y=350,
-                                                                                                      anchor=W)
-                custom_path_textbox = tk.Text(window, height=1, width=72, font="none 7")
-                tk.Checkbutton(window, text='Ignore browser path', variable=ignore_path).place(x=0, y=400, anchor=W)
+                tk.OptionMenu(setup_window, selected_browser, *browser_name, command=selection_event).place(x=60, y=350,
+                                                                                                            anchor=W)
+                custom_path_textbox = tk.Text(setup_window, height=1, width=72, font="none 7")
+                tk.Checkbutton(setup_window, text='Ignore browser path', variable=ignore_path).place(x=0, y=400,
+                                                                                                     anchor=W)
                 write_config(custom_path_textbox.get(), selected_browser.get(), ignore_path)
-                window.mainloop()
+                setup_window.mainloop()
             else:
                 print("Unsupported os")
                 terminate_all()
 
         case "all":
-            print("displaying whole config window")
+            print("displaying whole config setup_window")
 
 
-def gui():
+def gui(available_accounts):
     print("Starting main gui")
-    comment_link = ""
-    # prompt for link and store in comment_link
-    # store amount of votes in vote_count
-    # two buttons/slider for downvote/upvote, up = true, down = false
-    # start button
+
+    def check_fields():
+        #  try:
+        if comment_link.get("1.0", 'end-1c') == "":
+            showerror("Error", 'Enter a link in the "Comment link" field')
+        elif vote_count.get() == "":
+            showerror("Error", 'Enter a number in the "opinions" field')
+        else:
+            try:
+                int(vote_count.get())
+                start_reddit_bots(comment_link.get("1.0", 'end-1c'), int(vote_count.get()),
+                                  vote_decider.get())  # CHANGE HERE
+            except ValueError:
+                showerror("Error", 'Enter a number in the "opinions" field')
+
+    #  except TypeError:
+    #      showerror("Error", 'Enter a link in the "Comment link" field')
+
+    main_window = tk.Tk()
+    main_window.resizable(False, False)
+    main_window.title("Opinion changer")
+    main_window.geometry("440x130")
+    tk.Label(main_window, text="Enter comment link:").place(x=0, y=15, anchor=W)
+    comment_link = tk.Text(main_window, height=1, width=44, font="none 8")
+    comment_link.place(x=122, y=15, anchor=W)
+    tk.Label(main_window, text="Enter amount of opinions(votes):").place(x=0, y=40, anchor=W)
+    print(available_accounts)
+    tk.Label(main_window, text="available: " + str(available_accounts)).place(x=260, y=40, anchor=W)
+    vote_count = tk.Spinbox(main_window, from_=1, to=available_accounts, width=4)
+    vote_count.place(x=200, y=40, anchor=W)
+    tk.Button(text="Change Opinions", bg="#ff9393", command=lambda: check_fields(),
+              height=1, width=20).place(x=0, y=110, anchor=W)
+    tk.Button(text="Quit", command=lambda: terminate_all(), height=1, width=7).place(x=380, y=110, anchor=W)
+    tk.Button(text="More Options", command=lambda: setup("all"), height=1, width=18).place(x=195, y=110, anchor=W)
+    vote_decider = tk.Scale(main_window, from_=0, to_=1, orient="horizontal")
+    vote_decider.place(x=0, y=70, anchor=W)
+    tk.Label(main_window, text="Upvote Downvote").place(x=0, y=60, anchor=W)
+    # button_up = tk.Button(text="Up", command=lambda: pressed_up())
+    # button_up.place(x=0, y=60, anchor=W)
+    # button_down = tk.Button(text="Down", command=lambda: pressed_down())
+    # button_down.place(x=60, y=60, anchor=W)
+    main_window.mainloop()
+
     # if vote=True in separate thread upvote(vote_count)
     # or vote=False in separate thread downvote(vote_count)
 
 
 def start_reddit_bots(comment_link, vote_count, vote_type):
     if platform.system() == "Windows":
-        if vote_type:
+        if vote_type == 0:
             oc_windows.upvote(vote_count)
         else:
             oc_windows.downvote(vote_count)
     elif platform.system() == "Linux":
-        if vote_type:
+        if vote_type == 0:
             oc_linux.upvote(vote_count)
         else:
             oc_linux.downvote(vote_count)
@@ -248,5 +293,4 @@ def write_config(browser_path, browser_name, ignore_path):
 
 config_file = ""
 accounts_file = ""
-available_accounts = 0
 initialize()
