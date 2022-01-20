@@ -1,0 +1,3 @@
+# This is the list containing the accounts that will be used for reacting to a post. Add new accounts like this:
+name:password
+test:123
