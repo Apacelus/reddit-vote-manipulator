@@ -1,13 +1,11 @@
 import os
 import zipfile
-from os import startfile
-import webbrowser
 import tkinter as tk
 from tkinter import W
 import platform
 import urllib.request
 import tempfile
-from tkinter.messagebox import showinfo, showerror
+from tkinter.messagebox import showerror
 
 import oc_windows
 import oc_linux
@@ -15,21 +13,44 @@ import oc_linux
 
 def terminate_all():
     print("Exiting program")
-    oc_windows.terminate()
-    oc_linux.terminate()
+    oc_windows.abort()
+    oc_linux.abort()
     exit()
 
 
+def restart():
+    print("restarting script")
+    oc_windows.abort()
+    oc_linux.abort()
+    print(os.getcwd())
+    if platform.system() == "Windows":
+        # uncomment for release
+        pass
+        # os.system(os.getcwd() + r"\opinion-changer.exe")
+    elif platform.system() == "Linux":
+        # add linux code
+        pass
+    terminate_all()
+
+
 def initialize():
-    print("Initializing main file")
+    print("Initializing file")
     # check if config exists
     try:
         with open("config.txt", 'r') as f:
             config_file = f.read()
-            config_file = config_file.split("\n"[-1])
+        print("read config: " + str(config_file))
     except FileNotFoundError:
         setup("config")
+        main_window.quit()
+        restart()
+    if config_file == "":
+        setup("config")
+        restart()
+    else:
+        config_file = config_file.split("\n"[-1])
     # Check browser path from config.txt
+    print("test_config: " + str(config_file))
     if config_file[0][20:] == "False":
         browser_path = config_file[1][14:config_file[1].find(r'"', 14)]
         match browser_path[browser_path.rfind("\\") + 1:len(browser_path)]:
@@ -39,7 +60,7 @@ def initialize():
                     print("Verified path for chrome")
                 except FileNotFoundError:
                     print("Browser not found")
-                    terminate_all()
+                    terminate_all()  # dont quit, rather prompt for user input
             case "brave.exe":
                 try:
                     os.path.isfile(browser_path)
@@ -50,7 +71,7 @@ def initialize():
             case "msedge.exe":
                 try:
                     os.path.isfile(browser_path)
-                    print("Verified path for msedge")
+                    print("Verified path for Microsoft edge")
                 except FileNotFoundError:
                     print("Browser not found")
                     terminate_all()
@@ -62,47 +83,89 @@ def initialize():
                 terminate_all()
     elif not config_file[0][20:] == "True":
         setup("config")
+        restart()
     # calculate amount of available accounts from accounts.txt
     try:
         with open("accounts.txt", 'r') as f:
             accounts_file = f.read()
-            if accounts_file == "":
+        print(accounts_file)
+        if accounts_file == "":
+            setup("accounts")
+            restart()
+        else:
+            accounts_file = accounts_file[127:]
+            accounts_file = accounts_file.split("\n"[-1])
+            empty_lines = True
+            print("here:" + str(accounts_file))
+            if accounts_file[0] == "":
                 setup("accounts")
+                restart()
             else:
-                accounts_file = accounts_file[127:]
-                accounts_file = accounts_file.split("\n"[-1])
-                empty_lines = True
                 while empty_lines:
+                    print("empty_lines: " + str(accounts_file))
                     if accounts_file[len(accounts_file) - 1].find(":") == -1:
                         del accounts_file[len(accounts_file) - 1]
                     else:
                         empty_lines = False
-                print("available accounts: " + str(len(accounts_file)))
+            print("available accounts: " + str(len(accounts_file)))
     except FileNotFoundError:
         setup("accounts")
+        restart()
     # check if chromedriver/msedgedriver is present
     if platform.system() == "Windows":
         if oc_windows.initialize() == "Missing":
+            print("testasdasdasd")
             setup("driver")
+            restart()
     elif platform.system() == "Linux":
         if oc_linux.initialize() == "Missing":
             setup("driver")
+            restart()
+    else:
+        print("Unsupported platform")
     gui(len(accounts_file))
+
+
+def autodownload_accounts():
+    print("Downloading pre-made accounts")
+    with open("accounts.txt", 'w') as f:
+        request = urllib.request.Request(
+            url="https://raw.githubusercontent.com/Fornball/opinion-changer-reddit/main/premade_accounts.txt", headers={
+                "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'})
+        raw_accounts_file = urllib.request.urlopen(request).read()
+        f.write(raw_accounts_file[2:len(raw_accounts_file) - 1].decode("ascii"))
+    print("Download successful")
 
 
 def setup(mode):
     print("setup")
-    setup_window = tk.Tk()
+    setup_window = tk.Toplevel(main_window)
     setup_window.resizable(False, False)
     setup_window.title("Opinion changer setup")
     setup_window.geometry("440x600")
-    tk.Button(text="Relaunch program", command=lambda: terminate_all(), height=1, width=25).place(x=250, y=500,
-                                                                                                  anchor=W)
+    setup_window.grab_set()
+    # UI elements
+    close_options_button = tk.Button(setup_window, text="Close", height=1,
+                                     width=25)
+    accounts_management_label = tk.Label(setup_window, text="Accounts management", font="bold 11")
+    manual_accounts_label = tk.Label(setup_window, text='•Press "Edit accounts" to manually add accounts')
+    autodownload_label = tk.Label(setup_window,
+                                  text='•Press "Auto-download" to download accounts from the github repository.')
+    edit_accounts_button = tk.Button(setup_window, text="Edit accounts",
+                                     command=lambda: os.startfile("accounts.txt"), height=1,
+                                     width=25)
+    autodownload_accounts_button = tk.Button(setup_window, text="Auto-download",
+                                             command=lambda: [autodownload_accounts(), setup_window.quit()],
+                                             height=1,
+                                             width=25)
+    first_setup_close_button = tk.Button(setup_window, text="Close", command=lambda: terminate_all(), height=1,
+                                         width=25)
     match mode:
         case "driver":
+            print("driver mode")
             if platform.system() == "Windows":
                 print("on windows")
-                # this code auto downloads latest stable x64 version of the msedge driver
+                # this code auto downloads the latest stable x64 version of the msedgedriver
                 raw_html = urllib.request.Request(
                     url="https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/", headers={
                         "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'})
@@ -111,7 +174,7 @@ def setup(mode):
                 download_link_start = parsed_html.find("href", download_link_end - 200) + 6
                 # extracting downloaded driver to current directory
                 # parsed_html[download_link_start:download_link_end]
-                temp_zip = tempfile.mkstemp(suffix='.zip')
+                # temp_zip = tempfile.mkstemp(suffix='.zip')
                 with open(tempfile.gettempdir() + "msedgedriver.zip", 'wb') as f:
                     temp_zip_as_binary = urllib.request.Request(
                         url=parsed_html[download_link_start:download_link_end], headers={
@@ -121,6 +184,9 @@ def setup(mode):
                 file = zipfile.ZipFile(tempfile.gettempdir() + "msedgedriver.zip")
                 file.extractall(path=os.getcwd())
             elif platform.system() == "Linux":
+                # might be broken, left in for future linux update
+                pass
+                '''
                 print("on linux")
                 tk.Label(setup_window, text="Driver download", font="bold 11").place(x=0, y=12, anchor=W)
                 tk.Label(setup_window, text="1. Get your browser version").place(x=0, y=33, anchor=W)
@@ -143,32 +209,39 @@ def setup(mode):
                 setup_window.mainloop()
                 # os.path.abspath(os.getcwd())
                 # automate process with chromedriver-py
+                '''
             else:
                 print("Unsupported os")
                 terminate_all()
 
         case "accounts":
+            print("accounts mode")
+            main_window.withdraw()
             with open("accounts.txt", 'w') as f:
                 f.write(r"# This is the list containing the accounts that will be used for reacting to a post. "
                         + "Add new accounts like this:"
                         + "\nname:password")
-            tk.Label(setup_window, text="Accounts management", font="bold 11").place(x=0, y=220, anchor=W)
-            tk.Label(setup_window, text='•Press "Edit accounts" to manually add accounts').place(x=0, y=240, anchor=W)
-            tk.Label(setup_window, text='•Press "Auto-download" to download accounts from the github repository.') \
-                .place(x=0, y=260, anchor=W)
-            tk.Button(text="Edit accounts", command=lambda: startfile("accounts.txt"), height=1, width=25).place(
-                x=240, y=290, anchor=W)
-            tk.Button(text="Auto-download", command=lambda: startfile("accounts.txt"), height=1, width=25).place(
-                x=0, y=290, anchor=W)
+            accounts_management_label.place(x=0, y=220, anchor=W)
+            manual_accounts_label.place(x=0, y=240, anchor=W)
+            autodownload_label.place(x=0, y=260, anchor=W)
+            edit_accounts_button.place(x=240, y=290, anchor=W)
+            autodownload_accounts_button.place(x=0, y=290, anchor=W)
+            first_setup_close_button.place(x=250, y=580, anchor=W)
+            setup_window.protocol("WM_DELETE_WINDOW", terminate_all)
             setup_window.mainloop()
+            print("wtf")
         case "config":
-            print("config.txt not found or corrupted, launching setup")
-            ignore_path = False
+            print("config mode")
+            # main_window.withdraw()
+            # setup_window.quit()
             # perform check for os here
             if platform.system() == "Windows":
                 print("on windows")
                 write_config("", "Microsoft Edge", False)
             elif platform.system() == "Linux":
+                # might be broken, left in for future linux update
+                pass
+                '''
                 # UI logic
                 # Firefox not yet supported
                 browser_name = ["Chrome", "Microsoft Edge", "Firefox", "Opera", "Brave", "Chromium", "Custom:"]
@@ -193,12 +266,22 @@ def setup(mode):
                                                                                                      anchor=W)
                 write_config(custom_path_textbox.get(), selected_browser.get(), ignore_path)
                 setup_window.mainloop()
+                '''
             else:
                 print("Unsupported os")
                 terminate_all()
 
         case "all":
             print("displaying whole config setup_window")
+            setup_window.quit()
+            accounts_management_label.place(x=0, y=220, anchor=W)
+            manual_accounts_label.place(x=0, y=240, anchor=W)
+            autodownload_label.place(x=0, y=260, anchor=W)
+            edit_accounts_button.place(x=240, y=290, anchor=W)
+            autodownload_accounts_button.place(x=0, y=290, anchor=W)
+            close_options_button.configure(command=lambda: setup_window.quit())
+            close_options_button.place(x=250, y=580, anchor=W)
+            setup_window.mainloop()
 
 
 def gui(available_accounts):
@@ -210,32 +293,31 @@ def gui(available_accounts):
             showerror("Error", 'Enter a link in the "Comment link" field')
         elif vote_count.get() == "":
             showerror("Error", 'Enter a number in the "opinions" field')
+        elif int(vote_count.get()) == 0:
+            showerror("Error", 'Enter at least 1 in the "opinions" field')
+        elif int(vote_count.get()) > available_accounts:
+            showerror("Error", 'Cant use more accounts than available. Please lower the amount of "opnions"')
         else:
             try:
                 int(vote_count.get())
                 start_reddit_bots(comment_link.get("1.0", 'end-1c'), int(vote_count.get()),
-                                  vote_decider.get())  # CHANGE HERE
+                                  vote_decider.get())
             except ValueError:
                 showerror("Error", 'Enter a number in the "opinions" field')
 
-    #  except TypeError:
-    #      showerror("Error", 'Enter a link in the "Comment link" field')
-
-    main_window = tk.Tk()
-    main_window.resizable(False, False)
+    # main_window.resizable(False, False)
     main_window.title("Opinion changer")
     main_window.geometry("440x130")
     tk.Label(main_window, text="Enter comment link:").place(x=0, y=15, anchor=W)
     comment_link = tk.Text(main_window, height=1, width=44, font="none 8")
     comment_link.place(x=122, y=15, anchor=W)
     tk.Label(main_window, text="Enter amount of opinions(votes):").place(x=0, y=40, anchor=W)
-    print(available_accounts)
     tk.Label(main_window, text="available: " + str(available_accounts)).place(x=260, y=40, anchor=W)
-    vote_count = tk.Spinbox(main_window, from_=1, to=available_accounts, width=4)
+    vote_count = tk.Spinbox(main_window, from_=0, to=available_accounts, width=4)
     vote_count.place(x=200, y=40, anchor=W)
     tk.Button(text="Change Opinions", bg="#ff9393", command=lambda: check_fields(),
               height=1, width=20).place(x=0, y=110, anchor=W)
-    tk.Button(text="Quit", command=lambda: terminate_all(), height=1, width=7).place(x=380, y=110, anchor=W)
+    tk.Button(text="Stop", command=lambda: oc_windows.abort(), height=1, width=7).place(x=380, y=110, anchor=W)
     tk.Button(text="More Options", command=lambda: setup("all"), height=1, width=18).place(x=195, y=110, anchor=W)
     vote_decider = tk.Scale(main_window, from_=0, to_=1, orient="horizontal")
     vote_decider.place(x=0, y=70, anchor=W)
@@ -244,6 +326,7 @@ def gui(available_accounts):
     # button_up.place(x=0, y=60, anchor=W)
     # button_down = tk.Button(text="Down", command=lambda: pressed_down())
     # button_down.place(x=60, y=60, anchor=W)
+    main_window.protocol("WM_DELETE_WINDOW", terminate_all)
     main_window.mainloop()
 
     # if vote=True in separate thread upvote(vote_count)
@@ -253,14 +336,14 @@ def gui(available_accounts):
 def start_reddit_bots(comment_link, vote_count, vote_type):
     if platform.system() == "Windows":
         if vote_type == 0:
-            oc_windows.upvote(vote_count)
+            oc_windows.upvote(vote_count, comment_link)
         else:
-            oc_windows.downvote(vote_count)
+            oc_windows.downvote(vote_count, comment_link)
     elif platform.system() == "Linux":
         if vote_type == 0:
-            oc_linux.upvote(vote_count)
+            oc_linux.upvote(vote_count, comment_link)
         else:
-            oc_linux.downvote(vote_count)
+            oc_linux.downvote(vote_count, comment_link)
     else:
         print("How did u even get this far with an unsupported platform?!")
         terminate_all()
@@ -291,6 +374,5 @@ def write_config(browser_path, browser_name, ignore_path):
             f.write("ignore_browser_path=True\n" + browser_path)
 
 
-config_file = ""
-accounts_file = ""
+main_window = tk.Tk()
 initialize()
