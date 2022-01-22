@@ -1,10 +1,10 @@
 # this file is specifically made for linux
-from msedge.selenium_tools import Edge, EdgeOptions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
+# from msedge.selenium_tools import Edge, EdgeOptions
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.common.by import By
+# from selenium import webdriver
+# from selenium.common.exceptions import WebDriverException
 
 
 def initialize():
@@ -34,13 +34,13 @@ option.add_argument("--incognito --headless")
 '''
 
 
-def upvote(vote_count):
+def upvote(vote_count, comment_link):
     pass
 
 
-def downvote(vote_count):
+def downvote(vote_count, comment_link):
     pass
 
 
-def terminate():
+def abort():
     pass
