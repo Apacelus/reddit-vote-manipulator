@@ -25,9 +25,7 @@ def restart():
     oc_linux.abort()
     print(os.getcwd())
     if platform.system() == "Windows":
-        # uncomment for release
-        pass
-        # os.system(os.getcwd() + r"\opinion-changer.exe")
+        os.system(os.getcwd() + r"\opinion-changer.exe")
     elif platform.system() == "Linux":
         # add linux code
         pass
