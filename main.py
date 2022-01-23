@@ -5,7 +5,7 @@ from tkinter import W
 import platform
 import urllib.request
 import tempfile
-from tkinter.messagebox import showerror
+from tkinter.messagebox import showerror, showinfo
 
 import oc_windows
 import oc_linux
@@ -152,14 +152,10 @@ def setup(mode):
     autodownload_label = tk.Label(setup_window,
                                   text='•Press "Auto-download" to download accounts from the github repository.')
     edit_accounts_button = tk.Button(setup_window, text="Edit accounts",
-                                     command=lambda: os.startfile("accounts.txt"), height=1,
-                                     width=25)
+                                     command=lambda: os.startfile("accounts.txt"), height=1, width=25)
     autodownload_accounts_button = tk.Button(setup_window, text="Auto-download",
-                                             command=lambda: [autodownload_accounts(), setup_window.quit()],
-                                             height=1,
+                                             command=lambda: [autodownload_accounts(), setup_window.quit()], height=1,
                                              width=25)
-    first_setup_close_button = tk.Button(setup_window, text="Close", command=lambda: terminate_all(), height=1,
-                                         width=25)
     match mode:
         case "driver":
             print("driver mode")
@@ -226,7 +222,8 @@ def setup(mode):
             autodownload_label.place(x=0, y=260, anchor=W)
             edit_accounts_button.place(x=240, y=290, anchor=W)
             autodownload_accounts_button.place(x=0, y=290, anchor=W)
-            first_setup_close_button.place(x=250, y=580, anchor=W)
+            close_options_button.configure(command=lambda: terminate_all())
+            close_options_button.place(x=250, y=580, anchor=W)
             setup_window.protocol("WM_DELETE_WINDOW", terminate_all)
             setup_window.mainloop()
             print("wtf")
@@ -284,53 +281,45 @@ def setup(mode):
             setup_window.mainloop()
 
 
+def check_fields(available_accounts):
+    print("Checking fields")
+    if comment_link.get("1.0", 'end-1c') == "":
+        showerror("Error", 'Enter a link in the "Comment link" field')
+    elif vote_count.get() == "":
+        showerror("Error", 'Enter a number in the "opinions" field')
+    elif int(vote_count.get()) == 0:
+        showerror("Error", 'Enter at least 1 in the "opinions" field')
+    elif int(vote_count.get()) > available_accounts:
+        showerror("Error", 'Cant use more accounts than available. Please lower the amount of "opnions"')
+    else:
+        try:
+            start_reddit_bots(comment_link.get("1.0", 'end-1c')[:len(comment_link.get("1.0", 'end-1c')) - 2],
+                                  int(vote_count.get()), vote_decider.get())
+            showinfo("Success", "Opinions changed successfully!")
+        except ValueError:
+            showerror("Error", 'Enter a number in the "opinions" field')
+
+
 def gui(available_accounts):
     print("Starting main gui")
-
-    def check_fields():
-        #  try:
-        if comment_link.get("1.0", 'end-1c') == "":
-            showerror("Error", 'Enter a link in the "Comment link" field')
-        elif vote_count.get() == "":
-            showerror("Error", 'Enter a number in the "opinions" field')
-        elif int(vote_count.get()) == 0:
-            showerror("Error", 'Enter at least 1 in the "opinions" field')
-        elif int(vote_count.get()) > available_accounts:
-            showerror("Error", 'Cant use more accounts than available. Please lower the amount of "opnions"')
-        else:
-            try:
-                int(vote_count.get())
-                start_reddit_bots(comment_link.get("1.0", 'end-1c'), int(vote_count.get()),
-                                  vote_decider.get())
-            except ValueError:
-                showerror("Error", 'Enter a number in the "opinions" field')
-
     # main_window.resizable(False, False)
     main_window.title("Opinion changer")
     main_window.geometry("440x130")
     tk.Label(main_window, text="Enter comment link:").place(x=0, y=15, anchor=W)
-    comment_link = tk.Text(main_window, height=1, width=44, font="none 8")
     comment_link.place(x=122, y=15, anchor=W)
     tk.Label(main_window, text="Enter amount of opinions(votes):").place(x=0, y=40, anchor=W)
     tk.Label(main_window, text="available: " + str(available_accounts)).place(x=260, y=40, anchor=W)
-    vote_count = tk.Spinbox(main_window, from_=0, to=available_accounts, width=4)
     vote_count.place(x=200, y=40, anchor=W)
-    tk.Button(text="Change Opinions", bg="#ff9393", command=lambda: check_fields(),
+    vote_count.configure(to=available_accounts)
+    tk.Button(text="Change Opinions", bg="#ff9393",
+              command=lambda: check_fields(available_accounts),
               height=1, width=20).place(x=0, y=110, anchor=W)
     tk.Button(text="Stop", command=lambda: oc_windows.abort(), height=1, width=7).place(x=380, y=110, anchor=W)
     tk.Button(text="More Options", command=lambda: setup("all"), height=1, width=18).place(x=195, y=110, anchor=W)
-    vote_decider = tk.Scale(main_window, from_=0, to_=1, orient="horizontal")
     vote_decider.place(x=0, y=70, anchor=W)
     tk.Label(main_window, text="Upvote Downvote").place(x=0, y=60, anchor=W)
-    # button_up = tk.Button(text="Up", command=lambda: pressed_up())
-    # button_up.place(x=0, y=60, anchor=W)
-    # button_down = tk.Button(text="Down", command=lambda: pressed_down())
-    # button_down.place(x=60, y=60, anchor=W)
     main_window.protocol("WM_DELETE_WINDOW", terminate_all)
     main_window.mainloop()
-
-    # if vote=True in separate thread upvote(vote_count)
-    # or vote=False in separate thread downvote(vote_count)
 
 
 def start_reddit_bots(comment_link, vote_count, vote_type):
@@ -375,4 +364,7 @@ def write_config(browser_path, browser_name, ignore_path):
 
 
 main_window = tk.Tk()
+comment_link = tk.Text(main_window, height=1, width=44, font="none 8")
+vote_count = tk.Spinbox(main_window, from_=0, width=4)
+vote_decider = tk.Scale(main_window, from_=0, to_=1, orient="horizontal")
 initialize()
