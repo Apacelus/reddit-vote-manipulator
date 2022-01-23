@@ -7,13 +7,13 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import WebDriverException, StaleElementReferenceException
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.common.action_chains import ActionChains
 
 options = EdgeOptions()
-options.use_chromium = True  # deprecated?
+options.use_chromium = True
 options.add_argument("-inprivate")
 options.add_argument("-headless")
 options.add_argument("-disable-gpu")
-options.binary_location = ""
 abort_variable = False
 
 
@@ -50,7 +50,7 @@ def initialize():
 
 
 def upvote(vote_count, comment_link):
-    print("upvote")
+    print("mode: upvote")
     print(vote_count)
     browser = Edge(executable_path="msedgedriver.exe", options=options)
     # read accounts.txt
@@ -59,7 +59,6 @@ def upvote(vote_count, comment_link):
     accounts_file = accounts_file[125:]
     accounts_file = accounts_file.split("\n"[-1])
     empty_lines = True
-    print("here:" + str(accounts_file))
     while empty_lines:
         if accounts_file[len(accounts_file) - 1].find(":") == -1:
             del accounts_file[len(accounts_file) - 1]
@@ -107,7 +106,7 @@ def upvote(vote_count, comment_link):
                 browser.get(comment_link)
                 # wait until upvote button loads
                 print("upvoting")
-                WebDriverWait(browser, 10).until(ec.presence_of_element_located(
+                WebDriverWait(browser, 10).until(ec.element_to_be_clickable(
                     (By.XPATH,
                      "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]")))
                 # check if already upvoted
@@ -116,13 +115,21 @@ def upvote(vote_count, comment_link):
                         .get_attribute("aria-pressed") == "true":
                     print("already upvoted")
                 else:
-                    browser.find_element(By.XPATH,
-                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]").click()
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]"))
+                    print("upvoted successfully")
                 # logout
-                browser.find_element(By.XPATH,
-                                     "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
-                WebDriverWait(browser, 10).until(
-                    ec.presence_of_element_located((By.XPATH, "/html/body/div[5]/div/a[11]"))).click()
+                try:
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]/button/span[1]/i"))
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
+                except StaleElementReferenceException:
+                    browser.refresh()
+                    browser.find_element(By.XPATH,
+                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
                 # wait for logout
                 for time_out in range(1000):
                     login_xpath = "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div/div[1]/a[1]"
@@ -141,7 +148,7 @@ def upvote(vote_count, comment_link):
 
 
 def downvote(vote_count, comment_link):
-    print("Downvoting started")
+    print("mode: downvote")
     print(vote_count)
     browser = Edge(executable_path="msedgedriver.exe", options=options)
     # read accounts.txt
@@ -150,7 +157,6 @@ def downvote(vote_count, comment_link):
     accounts_file = accounts_file[125:]
     accounts_file = accounts_file.split("\n"[-1])
     empty_lines = True
-    print("here:" + str(accounts_file))
     while empty_lines:
         if accounts_file[len(accounts_file) - 1].find(":") == -1:
             del accounts_file[len(accounts_file) - 1]
@@ -196,23 +202,31 @@ def downvote(vote_count, comment_link):
                 print("getting link")
                 browser.get(comment_link)
                 # wait until downvote button loads
-                print("upvoting")
-                WebDriverWait(browser, 10).until(ec.presence_of_element_located(
+                print("downvoting")
+                WebDriverWait(browser, 10).until(ec.element_to_be_clickable(
                     (By.XPATH,
-                     "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]")))
-                # check if already upvoted
+                     "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]")))
+                # check if already downvoted
                 if browser.find_element(By.XPATH,
-                                        "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]") \
+                                        "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]") \
                         .get_attribute("aria-pressed") == "true":
                     print("already downvoted")
                 else:
-                    browser.find_element(By.XPATH,
-                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]").click()
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]/span/i"))
+                    print("downvoted successfully")
                 # logout
-                browser.find_element(By.XPATH,
-                                     "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
-                WebDriverWait(browser, 10).until(
-                    ec.presence_of_element_located((By.XPATH, "/html/body/div[5]/div/a[11]"))).click()
+                try:
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]/button/span[1]/i"))
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
+                except StaleElementReferenceException:
+                    browser.refresh()
+                    browser.find_element(By.XPATH,
+                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
                 # wait for logout
                 for time_out in range(1000):
                     login_xpath = "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div/div[1]/a[1]"
