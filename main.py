@@ -6,6 +6,7 @@ import platform
 import urllib.request
 import tempfile
 from tkinter.messagebox import showerror, showinfo
+from sys import exit
 
 import oc_windows
 import oc_linux
