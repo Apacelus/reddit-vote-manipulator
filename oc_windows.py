@@ -11,8 +11,8 @@ from selenium.webdriver.support import expected_conditions as ec
 options = EdgeOptions()
 options.use_chromium = True  # deprecated?
 options.add_argument("-inprivate")
-# options.add_argument("-headless")
-# options.add_argument("-disable-gpu")
+options.add_argument("-headless")
+options.add_argument("-disable-gpu")
 options.binary_location = ""
 abort_variable = False
 
