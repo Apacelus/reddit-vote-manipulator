@@ -7,13 +7,9 @@ import urllib.request
 import tempfile
 from tkinter.messagebox import showerror, showinfo
 from sys import exit
-import base64
 
 import oc_windows
 import oc_linux
-
-icon_as_base64 = """"""
-icon_as_base64_path = ""
 
 
 def terminate_all():
@@ -29,9 +25,8 @@ def restart():
     oc_windows.abort()
     oc_linux.abort()
     main_window.destroy()
-    print(os.getcwd())
     if platform.system() == "Windows":
-        os.system(os.getcwd() + r"\opinion-changer.exe")
+        os.system('"' + os.getcwd() + r'\opinion-changer.exe"')
     elif platform.system() == "Linux":
         # add linux code
         pass
