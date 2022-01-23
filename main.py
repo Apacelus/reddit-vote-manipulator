@@ -41,10 +41,10 @@ def restart():
 def initialize():
     print("Initializing file")
     # decode image icon
-    global icon_as_base64_path
-    icon_as_base64_path = tempfile.mkstemp()
-    with open(icon_as_base64_path, 'wb') as icon_file:
-        icon_file.write(base64.b64decode(icon_as_base64))
+    # global icon_as_base64_path
+    # icon_as_base64_path = tempfile.mkstemp()
+    # with open(icon_as_base64_path, 'wb') as icon_file:
+    #    icon_file.write(base64.b64decode(icon_as_base64))
     # check if config exists
     try:
         with open("config.txt", 'r') as f:
@@ -150,7 +150,7 @@ def autodownload_accounts():
 def setup(mode):
     print("setup")
     setup_window = tk.Toplevel(main_window)
-    setup_window.iconbitmap(icon_as_base64_path)
+    # setup_window.iconbitmap(icon_as_base64_path)
     setup_window.resizable(False, False)
     setup_window.title("Opinion changer setup")
     setup_window.geometry("440x600")
@@ -313,9 +313,9 @@ def check_fields(available_accounts):
 
 def gui(available_accounts):
     print("Starting main gui")
-    # main_window.resizable(False, False)
+    main_window.resizable(False, False)
     main_window.title("Opinion changer")
-    main_window.iconbitmap(icon_as_base64_path)
+    # main_window.iconbitmap(icon_as_base64_path)
     main_window.geometry("440x130")
     tk.Label(main_window, text="Enter comment link:").place(x=0, y=15, anchor=W)
     comment_link.place(x=122, y=15, anchor=W)
