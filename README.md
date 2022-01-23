@@ -9,7 +9,7 @@ This project is a proof of concept and is not meant to be used maliciously. I do
   * Execute this command from the terminal *add command*
 # To-Do:
 - [ ] Add multithreading
-- [ ] Pack into exe
+- [x] Pack into exe
 - [ ] Finish Linux version
 - [ ] More features(comments, etc.)
 - [ ] Android verion(maybe)
