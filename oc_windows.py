@@ -1,5 +1,6 @@
 # this file is specifically made for windows
 import os.path
+import time
 
 from msedge.selenium_tools import Edge, EdgeOptions
 from selenium.webdriver.common.by import By
@@ -64,7 +65,7 @@ def upvote(vote_count, comment_link):
             del accounts_file[len(accounts_file) - 1]
         else:
             empty_lines = False
-    used_accounts_count = 0
+    used_accounts_count = 1
     global abort_variable
     abort_variable = False
     browser.get("https://reddit.com")
@@ -82,34 +83,55 @@ def upvote(vote_count, comment_link):
             print(username)
             password = accounts_file[used_accounts_count][accounts_file[used_accounts_count].find(r':') + 1:]
             print(password)
-            # wait for previous user to logout
-            WebDriverWait(browser, 10).until(ec.url_to_be("https://www.reddit.com/"))
-            # open new incognito and login
+            # login
             browser.get("https://www.reddit.com/login/")
             browser.find_element(By.ID, "loginUsername").send_keys(username)
             browser.find_element(By.ID, "loginPassword").send_keys(password)
             # press login
             browser.find_element(By.XPATH, "/html/body/div/main/div[1]/div/div[2]/form/fieldset[5]/button").click()
             # check if reddit throws login error
-            if browser.find_element(By.XPATH, "/html/body/div/main/div[1]/div/div[2]/form/fieldset[1]/div"):
+            if browser.find_element(By.XPATH,
+                                    "/html/body/div/main/div[1]/div/div[2]/form/fieldset[1]/div").text == "Incorrect username or password":
                 print("Incorrect username or password, skipping")
+                browser.get("https://www.reddit.com/")
                 used_accounts_count += 1
                 continue
-            elif browser.find_element(By.XPATH, "enter"):  # add check for timeout here
-                pass
-                # do timeout
+            # elif browser.find_element(By.XPATH, "xpath here").text == "error message here":
+            #    pass
+            # do timeout
             else:
                 # wait for login redirect
                 WebDriverWait(browser, 10).until(ec.url_to_be("https://www.reddit.com/"))
+                print("getting link")
                 browser.get(comment_link)
                 # wait till upvote button loads, then click it
+                print("upvoting")
                 WebDriverWait(browser, 10).until(ec.presence_of_element_located(
                     (By.XPATH,
-                     r"/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]"))).click()
+                     "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]")))
+                # check if already upvoted
+                if browser.find_element(By.XPATH,
+                                        "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]") \
+                        .get_attribute("aria-pressed") == "false":
+                    browser.find_element(By.XPATH,
+                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]").click()
+                else:
+                    print("already upvoted")
                 # logout
                 browser.find_element(By.XPATH,
                                      "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
-                browser.find_element(By.XPATH, "/html/body/div[5]/div/a[11]").click()
+                WebDriverWait(browser, 10).until(
+                    ec.presence_of_element_located((By.XPATH, "/html/body/div[5]/div/a[11]"))).click()
+                # wait for logout
+                for time_out in range(1000):
+                    login_xpath = "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div/div[1]/a[1]"
+                    if not browser.find_element(By.XPATH, login_xpath).get_attribute("role") == "button":
+                        time_out += 1
+                        time.sleep(0.01)
+                        continue
+                    else:
+                        break
+                print("waited")
         used_accounts_count += 1
     browser.quit()
 
