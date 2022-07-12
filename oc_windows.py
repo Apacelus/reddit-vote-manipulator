@@ -1,20 +1,25 @@
 # this file is specifically made for windows
 import os.path
+import time
 
 from msedge.selenium_tools import Edge, EdgeOptions
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import WebDriverException, StaleElementReferenceException
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.common.action_chains import ActionChains
 
 options = EdgeOptions()
-options.use_chromium = True  # deprecated?
+options.use_chromium = True
 options.add_argument("-inprivate")
 options.add_argument("-headless")
 options.add_argument("-disable-gpu")
-options.binary_location = ""
-browser = ""
+abort_variable = False
+
+
+def abort():
+    global abort_variable
+    abort_variable = True
 
 
 def initialize():
@@ -42,38 +47,198 @@ def initialize():
                 accounts_file = f.read()
             accounts_file = accounts_file[127:]
             accounts_file = accounts_file.split("\n"[-1])
-            available_accounts = len(accounts_file)
-            # if user leaves empty space at the end its counted too, add check later
-            print("available accs: " + str(available_accounts))
 
 
-def upvote(vote_count):
-    print("upvote")
-    used_accounts_count = 0
+def upvote(vote_count, comment_link):
+    print("mode: upvote")
+    print(vote_count)
+    browser = Edge(executable_path="msedgedriver.exe", options=options)
+    # read accounts.txt
+    with open("accounts.txt", 'r') as f:
+        accounts_file = f.read()
+    accounts_file = accounts_file[125:]
+    accounts_file = accounts_file.split("\n"[-1])
+    empty_lines = True
+    while empty_lines:
+        if accounts_file[len(accounts_file) - 1].find(":") == -1:
+            del accounts_file[len(accounts_file) - 1]
+        else:
+            empty_lines = False
+    global abort_variable
+    abort_variable = False
+    browser.get("https://reddit.com")
     # start loop with vote_count amount
-    while used_accounts_count < vote_count:
-        print("while in upvote")
-        # extract username and password
-        username = accounts_file[used_accounts_count][:accounts_file[used_accounts_count].find(r':') - 1]
-        password = accounts_file[used_accounts_count][accounts_file[used_accounts_count].find(r':') + 1:]
-        # open new incognito and login
-        browser.get("https://www.reddit.com/login/")
-        browser.find_element(By.ID, "loginUsername").send_keys(username)
-        browser.find_element(By.ID, "loginPassword").send_keys(password).send_keys(Keys.RETURN)
-        browser.get(comment_link)
-        browser.find_element(By.XPATH,
-                             r"/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]")
-        browser.quit()
+    for used_accounts_count in range(vote_count):
+        print(used_accounts_count)
+        print(vote_count)
+        if abort_variable:
+            print("aborting")
+            browser.quit()
+            break
+        else:
+            print("while in upvote")
+            # extract username and password
+            print("used" + str(used_accounts_count))
+            username = accounts_file[used_accounts_count][:accounts_file[used_accounts_count].find(r':')]
+            print(username)
+            password = accounts_file[used_accounts_count][accounts_file[used_accounts_count].find(r':') + 1:]
+            print(password)
+            # login
+            browser.get("https://www.reddit.com/login/")
+            browser.find_element(By.ID, "loginUsername").send_keys(username)
+            browser.find_element(By.ID, "loginPassword").send_keys(password)
+            # press login
+            browser.find_element(By.XPATH, "/html/body/div/main/div[1]/div/div[2]/form/fieldset[5]/button").click()
+            # check if reddit throws login error
+            if browser.find_element(By.XPATH,
+                                    "/html/body/div/main/div[1]/div/div[2]/form/fieldset[1]/div").text == "Incorrect username or password":
+                print("Incorrect username or password, skipping")
+                browser.get("https://www.reddit.com/")
+                used_accounts_count += 1
+                continue
+            # elif browser.find_element(By.XPATH, "xpath here").text == "error message here":
+            #    pass
+            # do timeout
+            else:
+                # wait for login redirect
+                WebDriverWait(browser, 10).until(ec.url_to_be("https://www.reddit.com/"))
+                print("getting link")
+                browser.get(comment_link)
+                # wait until upvote button loads
+                print("upvoting")
+                WebDriverWait(browser, 10).until(ec.element_to_be_clickable(
+                    (By.XPATH,
+                     "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]")))
+                # check if already upvoted
+                if browser.find_element(By.XPATH,
+                                        "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]") \
+                        .get_attribute("aria-pressed") == "true":
+                    print("already upvoted")
+                else:
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div[1]/div/div/div/div[2]/div[3]/div[3]/div[1]/button[1]"))
+                    print("upvoted successfully")
+                # logout
+                try:
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]/button/span[1]/i"))
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
+                except StaleElementReferenceException:
+                    browser.refresh()
+                    browser.find_element(By.XPATH,
+                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
+                # wait for logout
+                for time_out in range(1000):
+                    login_xpath = "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div/div[1]/a[1]"
+                    try:
+                        if not browser.find_element(By.XPATH, login_xpath).get_attribute("role") == "button":
+                            time_out += 1
+                            time.sleep(0.01)
+                            continue
+                        else:
+                            break
+                    except StaleElementReferenceException:
+                        continue
+                print("waited")
         used_accounts_count += 1
+    browser.quit()
 
 
-def downvote(vote_count):
-    print("downvote")
-    used_accounts_count = 0
-    # start loop with vote_count
-    while used_accounts_count < vote_count:
-        print("while in downvote")
-
-
-def terminate():
-    pass
+def downvote(vote_count, comment_link):
+    print("mode: downvote")
+    print(vote_count)
+    browser = Edge(executable_path="msedgedriver.exe", options=options)
+    # read accounts.txt
+    with open("accounts.txt", 'r') as f:
+        accounts_file = f.read()
+    accounts_file = accounts_file[125:]
+    accounts_file = accounts_file.split("\n"[-1])
+    empty_lines = True
+    while empty_lines:
+        if accounts_file[len(accounts_file) - 1].find(":") == -1:
+            del accounts_file[len(accounts_file) - 1]
+        else:
+            empty_lines = False
+    used_accounts_count = 1
+    global abort_variable
+    abort_variable = False
+    browser.get("https://reddit.com")
+    # start loop with vote_count amount
+    for used_accounts_count in range(vote_count):
+        if abort_variable:
+            print("aborting")
+            browser.quit()
+            break
+        else:
+            print("Looping downvoting")
+            # extract username and password
+            # print("used" + str(used_accounts_count))
+            username = accounts_file[used_accounts_count][:accounts_file[used_accounts_count].find(r':')]
+            # print(username)
+            password = accounts_file[used_accounts_count][accounts_file[used_accounts_count].find(r':') + 1:]
+            # print(password)
+            # login
+            browser.get("https://www.reddit.com/login/")
+            browser.find_element(By.ID, "loginUsername").send_keys(username)
+            browser.find_element(By.ID, "loginPassword").send_keys(password)
+            # press login
+            browser.find_element(By.XPATH, "/html/body/div/main/div[1]/div/div[2]/form/fieldset[5]/button").click()
+            # check if reddit throws login error
+            if browser.find_element(By.XPATH,
+                                    "/html/body/div/main/div[1]/div/div[2]/form/fieldset[1]/div").text == "Incorrect username or password":
+                print("Incorrect username or password, skipping")
+                browser.get("https://www.reddit.com/")
+                used_accounts_count += 1
+                continue
+            # elif browser.find_element(By.XPATH, "xpath here").text == "error message here":
+            #    pass
+            # do timeout
+            else:
+                # wait for login redirect
+                WebDriverWait(browser, 10).until(ec.url_to_be("https://www.reddit.com/"))
+                print("getting link")
+                browser.get(comment_link)
+                # wait until downvote button loads
+                print("downvoting")
+                WebDriverWait(browser, 10).until(ec.element_to_be_clickable(
+                    (By.XPATH,
+                     "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]")))
+                # check if already downvoted
+                if browser.find_element(By.XPATH,
+                                        "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]") \
+                        .get_attribute("aria-pressed") == "true":
+                    print("already downvoted")
+                else:
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[3]/div[1]/div[2]/div[5]/div/div/div/div/div/div/div/div[2]/div[3]/div[3]/div[1]/button[2]/span/i"))
+                    print("downvoted successfully")
+                # logout
+                try:
+                    browser.execute_script("arguments[0].click();", browser.find_element(By.XPATH,
+                                                                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]/button/span[1]/i"))
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
+                except StaleElementReferenceException:
+                    browser.refresh()
+                    browser.find_element(By.XPATH,
+                                         "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div[2]/div/div[2]").click()
+                    browser.execute_script("arguments[0].click();", WebDriverWait(browser, 10).until(
+                        ec.element_to_be_clickable((By.XPATH, "/html/body/div[5]/div/a[11]"))))
+                # wait for logout
+                for time_out in range(1000):
+                    login_xpath = "/html/body/div[1]/div/div[2]/div[1]/header/div/div[2]/div/div[1]/a[1]"
+                    try:
+                        if not browser.find_element(By.XPATH, login_xpath).get_attribute("role") == "button":
+                            time_out += 1
+                            time.sleep(0.01)
+                            continue
+                        else:
+                            break
+                    except StaleElementReferenceException:
+                        continue
+                print("waited")
+        used_accounts_count += 1
+    browser.quit()
