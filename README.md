@@ -1,4 +1,4 @@
-# opinion-changer-reddit
+# reddit-vote-manipulator
 Changes the opinion of other people on reddit by upvoting or downvoting a specific post with multiple accounts.  
 **Developement will continue after the [reddit-unbotter](https://github.com/apacelus/reddit-unbotter) is finished.**
 ## Disclaimer
